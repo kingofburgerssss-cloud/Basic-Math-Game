@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Speed Game Store</title>
+<style>
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: linear-gradient(135deg, #f9f9f9, #e0f7fa); color: #333; overflow: hidden; position: relative; }
+  h1 { font-size: 36px; color: #00796b; text-shadow: 1px 1px 2px #b2dfdb; }
+  canvas { display: block; margin: 20px auto; background: #fff; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); z-index: 1; position: relative; }
+  #score { font-size: 22px; margin-bottom: 10px; font-weight: bold; color: #00796b; }
+  input, button { font-size: 18px; padding: 10px 20px; border: none; border-radius: 10px; margin: 5px; outline: none; transition: all 0.6s ease; z-index: 2; position: relative; }
+  input { width: 100px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  button { background: #00796b; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  button:hover { background: #004d40; }
+  .flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 1000; }
+  .failAnim { position: absolute; font-size: 32px; font-weight: bold; color: #d32f2f; opacity: 0; animation: failShake 1.2s ease-out forwards; z-index: 3; }
+  #store { margin-top: 20px; border-top: 2px solid #00796b; padding-top: 10px; position: relative; z-index: 2; }
+  .store-item { display: inline-block; margin: 5px; padding: 10px; border: 1px solid #00796b; border-radius: 10px; cursor: pointer; transition: background 0.3s; }
+  .store-item span { margin-left: 8px; font-weight: bold; color: #004d40; }
+  .store-item:hover { background: #b2dfdb; }
+  @keyframes failShake { 0% {opacity:1; transform:translate(0,0) rotate(0deg);} 25% {transform:translate(-20px,5px) rotate(-10deg);} 50% {transform:translate(20px,-5px) rotate(10deg);} 75% {transform:translate(-10px,5px) rotate(-5deg);} 100% {opacity:0; transform:translate(0,0) rotate(0deg);} }
+</style>
+</head>
+<body>
+<h1 id="title">Math Speed Game</h1>
+<div id="score">Score: 0</div>
+<canvas id="gameCanvas" width="400" height="300"></canvas>
+<input type="text" id="answer" placeholder="Answer" disabled>
+<button id="startBtn">Start</button>
+<div id="hintText" style="font-size:20px; color:#d32f2f; margin-top:10px;"></div>
+<div class="flash" id="flash"></div>
+<div id="store">
+  <div class="store-item" data-cost="3" data-effect="extraTime">Extra 5s Time <span>3</span></div>
+  <div class="store-item" data-cost="5" data-effect="doublePoints">Double Points Chance +5% <span>5</span></div>
+  <div class="store-item" data-cost="7" data-effect="hint">Hint for Next Question <span>7</span></div>
+</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const answerInput = document.getElementById('answer');
+const startBtn = document.getElementById('startBtn');
+const flash = document.getElementById('flash');
+const storeItems = document.getElementById('store').getElementsByClassName('store-item');
+const hintText = document.getElementById('hintText');
+
+let score = 0;
+let timer;
+let timeLeft = 10;
+let currentAnswer;
+let currentQuestion = '';
+let isDoublePoint = false;
+let doublePointChance = 0.1;
+let extraTimeNext = 0;
+let gameActive = false;
+let hintNext = false;
+
+const specialQuestions = [
+  {q: 'Is matthew a fatty', a: 'yes'},
+  {q: 'Is zaneta a glazer', a: 'yes'},
+  {q: 'Lebron', a: 'yes'}
+];
+
+const originalInputStyle = { position:'relative', top:'', left:'', transform:'' };
+
+function drawBlank(){ ctx.clearRect(0,0,canvas.width,canvas.height); }
+
+function drawQuestion() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!gameActive) return;
+  ctx.fillStyle=isDoublePoint?'#d32f2f':'#00796b';
+  ctx.font='26px Segoe UI';
+  ctx.fillText(currentQuestion,20,100);
+  ctx.fillText(`Time: ${timeLeft}s`,20,150);
+}
+
+function generateQuestion() {
+  if(!gameActive) return;
+  hintText.textContent = '';
+  if(Math.random() < 0.01) {
+    const special = specialQuestions[Math.floor(Math.random() * specialQuestions.length)];
+    currentQuestion = special.q;
+    currentAnswer = special.a.toLowerCase();
+    timeLeft = 10;
+  } else {
+    let random = Math.random();
+    if(random < doublePointChance) {
+      isDoublePoint=true;
+      let divisor=Math.floor(Math.random()*12)+1;
+      let quotient=Math.floor(Math.random()*12)+1;
+      currentAnswer=quotient.toString();
+      let dividend=divisor*quotient;
+      currentQuestion=`DOUBLE POINT! Solve: ${dividend} ÷ ${divisor}`;
+      timeLeft=30+extraTimeNext;
+    } else {
+      isDoublePoint=false;
+      let num1=Math.floor(Math.random()*12)+1;
+      let num2=Math.floor(Math.random()*12)+1;
+      currentAnswer=(num1*num2).toString();
+      currentQuestion=`What's ${num1} × ${num2}?`;
+      timeLeft=10+extraTimeNext;
+    }
+  }
+  if(hintNext){ hintText.textContent = `Hint: The answer is ${currentAnswer}`; hintNext=false; }
+  extraTimeNext=0;
+  drawQuestion();
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(()=>{
+    if(!gameActive) return;
+    timeLeft--;
+    drawQuestion();
+    if(timeLeft <= 0) gameOver();
+  },1000);
+}
+
+function animateInputToCenter(){
+  answerInput.style.transition='all 0.6s ease';
+  answerInput.style.position='absolute';
+  answerInput.style.top='50%';
+  answerInput.style.left='50%';
+  answerInput.style.transform='translate(-50%,-50%)';
+}
+
+function resetUI(){
+  startBtn.style.opacity=1;
+  startBtn.disabled=false;
+  answerInput.disabled=true;
+  answerInput.style.position=originalInputStyle.position;
+  answerInput.style.top=originalInputStyle.top;
+  answerInput.style.left=originalInputStyle.left;
+  answerInput.style.transform=originalInputStyle.transform;
+  gameActive=false;
+  currentQuestion='';
+  drawBlank();
+  clearInterval(timer);
+  hintText.textContent='';
+}
+
+function shakeAndFlash(){
+  let duration=1200, start=null;
+  function step(timestamp){
+    if(!start) start=timestamp;
+    let elapsed=timestamp-start;
+    let progress=elapsed/duration; if(progress>1) progress=1;
+    let intensity=(1-progress)*25;
+    const x=(Math.random()-0.5)*intensity;
+    const y=(Math.random()-0.5)*intensity;
+    document.body.style.transform=`translate(${x}px,${y}px)`;
+    flash.style.opacity=0.8*(1-progress);
+    if(progress<1) requestAnimationFrame(step);
+    else { document.body.style.transform='translate(0,0)'; flash.style.opacity=0; }
+  }
+  requestAnimationFrame(step);
+}
+
+function animateFail(){
+  const anim=document.createElement('div');
+  anim.className='failAnim';
+  anim.textContent='FAIL!';
+  anim.style.left=canvas.offsetLeft+140+'px';
+  anim.style.top=canvas.offsetTop+100+'px';
+  document.body.appendChild(anim);
+  setTimeout(()=>document.body.removeChild(anim),1200);
+}
+
+function gameOver(){
+  if(!gameActive) return;
+  gameActive=false;
+  shakeAndFlash(); animateFail();
+  score=0; scoreEl.textContent=`Score: ${score}`;
+  answerInput.value='';
+  resetUI();
+}
+
+function startGame(){
+  startBtn.disabled=true; startBtn.style.opacity=0;
+  answerInput.disabled=false; answerInput.value='';
+  animateInputToCenter();
+  gameActive=true;
+  generateQuestion();
+  startTimer();
+}
+
+startBtn.addEventListener('click', startGame);
+
+answerInput.addEventListener('keydown', function(e){
+  if(!gameActive) return;
+  if(e.key==='Enter'){
+    if(answerInput.value.trim().toLowerCase() === currentAnswer){
+      score += isDoublePoint?2:1;
+      scoreEl.textContent = `Score: ${score}`;
+      answerInput.value='';
+      generateQuestion();
+    } else { gameOver(); }
+  }
+});
+
+Array.from(storeItems).forEach(item => {
+  item.addEventListener('click', () => {
+    const cost = Number(item.getAttribute('data-cost'));
+    const effect = item.getAttribute('data-effect');
+    if(score >= cost){
+      score -= cost;
+      scoreEl.textContent = `Score: ${score}`;
+      switch(effect){
+        case 'extraTime': extraTimeNext += 5; break;
+        case 'doublePoints': doublePointChance += 0.05; break;
+        case 'hint': hintNext = true; break;
+      }
+    } else { alert('Not enough score to buy this item!'); }
+  });
+});
+</script>
+</body>
+</html>
