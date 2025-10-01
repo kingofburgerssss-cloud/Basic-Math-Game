@@ -5,19 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Math Speed Game Store</title>
 <style>
-  html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: linear-gradient(135deg, #f9f9f9, #e0f7fa); color: #333; overflow: hidden; position: relative; }
-  h1 { font-size: 36px; color: #00796b; text-shadow: 1px 1px 2px #b2dfdb; }
-  canvas { display: block; margin: 20px auto; background: #fff; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); z-index: 1; position: relative; }
-  #score { font-size: 22px; margin-bottom: 10px; font-weight: bold; color: #00796b; }
-  input, button { font-size: 18px; padding: 10px 20px; border: none; border-radius: 10px; margin: 5px; outline: none; transition: all 0.6s ease; z-index: 2; position: relative; }
-  input { width: 100px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-  button { background: #00796b; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-  button:hover { background: #004d40; }
-  .flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 1000; }
-  #store { margin-top: 20px; border-top: 2px solid #00796b; padding-top: 10px; position: relative; z-index: 2; }
-  .store-item { display: inline-block; margin: 5px; padding: 10px; border: 1px solid #00796b; border-radius: 10px; cursor: pointer; transition: background 0.3s; }
-  .store-item span { margin-left: 8px; font-weight: bold; color: #004d40; }
-  .store-item:hover { background: #b2dfdb; }
+html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: linear-gradient(135deg, #f9f9f9, #e0f7fa); color: #333; overflow: hidden; position: relative; }
+h1 { font-size: 36px; color: #00796b; text-shadow: 1px 1px 2px #b2dfdb; }
+canvas { display: block; margin: 20px auto; background: #fff; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); z-index: 1; position: relative; }
+#score { font-size: 22px; margin-bottom: 10px; font-weight: bold; color: #00796b; }
+input, button { font-size: 18px; padding: 10px 20px; border: none; border-radius: 10px; margin: 5px; outline: none; transition: all 0.6s ease; z-index: 2; position: relative; }
+input { width: 100px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+button { background: #00796b; color: white; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+button:hover { background: #004d40; }
+.flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 1000; }
+#store { margin-top: 20px; border-top: 2px solid #00796b; padding-top: 10px; position: relative; z-index: 2; }
+.store-item { display: inline-block; margin: 5px; padding: 10px; border: 1px solid #00796b; border-radius: 10px; cursor: pointer; transition: background 0.3s; }
+.store-item span { margin-left: 8px; font-weight: bold; color: #004d40; }
+.store-item:hover { background: #b2dfdb; }
+#slotBtn { font-size: 20px; margin-top: 10px; }
+/* Slot Machine Styles */
+#slotOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; opacity:0; pointer-events:none; transition: opacity 0.5s ease; z-index:2000; }
+#slotBox { width:350px; height:250px; background:#fff; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.3); display:flex; flex-direction: column; justify-content: center; align-items: center; font-size:24px; color:#333; opacity:0; transform:scale(0.5); transition: opacity 0.5s ease, transform 0.5s ease; }
+#reels { display:flex; justify-content:space-between; width:90%; margin-bottom:20px; height:120px; overflow:hidden; }
+.reel { flex:1; display:flex; flex-direction: column; justify-content:flex-start; align-items:center; height:120px; overflow:hidden; font-size:64px; }
+.reel div { height:120px; line-height:120px; }
 </style>
 </head>
 <body>
@@ -26,6 +33,7 @@
 <canvas id="gameCanvas" width="400" height="300"></canvas>
 <input type="text" id="answer" placeholder="Answer" disabled>
 <button id="startBtn">Start</button>
+<button id="slotBtn">🎰 Slot Machine</button>
 <div id="hintText" style="font-size:20px; color:#d32f2f; margin-top:10px;"></div>
 <div class="flash" id="flash"></div>
 <div id="store">
@@ -33,6 +41,18 @@
   <div class="store-item" data-cost="5" data-effect="doublePoints">Double Points Chance +5% <span>5</span></div>
   <div class="store-item" data-cost="7" data-effect="hint">Hint for Next Question <span>7</span></div>
 </div>
+
+<div id="slotOverlay">
+  <div id="slotBox">
+    <div id="reels">
+      <div class="reel"></div>
+      <div class="reel"></div>
+      <div class="reel"></div>
+    </div>
+    <button id="spinBtn" style="font-size:20px; padding:10px 20px; border-radius:10px; cursor:pointer;">SPIN</button>
+  </div>
+</div>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -42,6 +62,13 @@ const startBtn = document.getElementById('startBtn');
 const flash = document.getElementById('flash');
 const storeItems = document.getElementById('store').getElementsByClassName('store-item');
 const hintText = document.getElementById('hintText');
+
+const slotBtn = document.getElementById('slotBtn');
+const slotOverlay = document.getElementById('slotOverlay');
+const slotBox = document.getElementById('slotBox');
+const spinBtn = document.getElementById('spinBtn');
+const reels = document.getElementsByClassName('reel');
+const symbols = ['🍒','🍋','🍊','⭐','💎'];
 
 let score = 0;
 let timer;
@@ -53,6 +80,7 @@ let doublePointChance = 0.1;
 let extraTimeNext = 0;
 let gameActive = false;
 let hintNext = false;
+let pausedTimeLeft = 0;
 
 const specialQuestions = [
   {q: 'Is matthew a fatty', a: 'yes'},
@@ -140,90 +168,51 @@ function resetUI(){
 
 function animateFailWithFlash(){
   const rect = canvas.getBoundingClientRect();
+  const anim=document.createElement('div');
+  anim.className='failAnim';
 
-  // decide fail text based on difficulty
-  let failMsg = 'FAIL!';
-  if(specialQuestions.some(sq => sq.q === currentQuestion)) {
-    failMsg = 'imagine 😂🫵'; // hard
-  } else if(isDoublePoint) {
-    failMsg = 'Tragic 💔'; // mid
-  } else {
-    failMsg = 'Are we being deadass 🥀🥀'; // easy
-  }
+  // choose text based on difficulty (easy, mid, hard)
+  let text;
+  if(currentQuestion.includes('×') && Number(currentAnswer)<=6){ text='Are we being deadass 🥀🥀'; }
+  else if(currentQuestion.includes('×')){ text='Tragic 💔'; }
+  else { text='imagine 😂🫵'; }
+  anim.textContent = `${text}\nAnswer: ${currentAnswer}`;
+  anim.style.whiteSpace='pre';
+  anim.style.left=rect.left+canvas.width/2-140+'px';
+  anim.style.top=rect.top+100+'px';
+  anim.style.fontSize='32px';
+  anim.style.color='#d32f2f';
+  anim.style.opacity='1';
+  anim.style.position='absolute';
+  anim.style.zIndex='3000';
+  document.body.appendChild(anim);
 
-  // FAIL text
-  const failText = document.createElement('div');
-  failText.textContent = failMsg;
-  failText.style.position = 'absolute';
-  failText.style.fontSize = '48px';
-  failText.style.fontWeight = 'bold';
-  failText.style.color = '#d32f2f';
-  failText.style.opacity = '1';
-  failText.style.zIndex = '1001';
-  failText.style.left = rect.left + rect.width / 2 + 'px';
-  failText.style.top = rect.top + rect.height / 2 + 'px';
-  failText.style.transform = 'translate(-50%, -50%) scale(0.5)';
-  document.body.appendChild(failText);
-
-  // Correct answer text
-  const answerText = document.createElement('div');
-  answerText.textContent = `Correct Answer: ${currentAnswer}`;
-  answerText.style.position = 'absolute';
-  answerText.style.fontSize = '28px';
-  answerText.style.fontWeight = 'bold';
-  answerText.style.color = '#d32f2f';
-  answerText.style.opacity = '1';
-  answerText.style.zIndex = '1001';
-  answerText.style.left = rect.left + rect.width / 2 + 'px';
-  answerText.style.top = rect.top + rect.height / 2 + 60 + 'px';
-  answerText.style.transform = 'translate(-50%, -50%) scale(0.5)';
-  document.body.appendChild(answerText);
-
-  // immediate UI reset
-  resetUI();
-  score = 0;
-  scoreEl.textContent = `Score: ${score}`;
-  answerInput.value = '';
-
-  // flash animation controls scaling + opacity
-  flash.style.opacity = 0.8;
-  let duration = 1200;
-  let start = null;
+  // flash and fade animation
+  let duration=1200, start=null;
   function step(timestamp){
-    if(!start) start = timestamp;
-    let elapsed = timestamp - start;
-    let progress = elapsed / duration;
-    if(progress > 1) progress = 1;
-
-    // shake for flash
-    const intensity = (1 - progress) * 25;
-    const x = (Math.random() - 0.5) * intensity;
-    const y = (Math.random() - 0.5) * intensity;
-    document.body.style.transform = `translate(${x}px, ${y}px)`;
-
-    // fade out flash + scale fail texts
-    flash.style.opacity = 0.8 * (1 - progress);
-    const scale = 0.5 + 0.7 * progress; // scale 0.5 -> 1.2
-    failText.style.transform = `translate(-50%, -50%) scale(${scale})`;
-    answerText.style.transform = `translate(-50%, -50%) scale(${scale})`;
-    failText.style.opacity = `${1 - progress}`;
-    answerText.style.opacity = `${1 - progress}`;
-
-    if(progress < 1) requestAnimationFrame(step);
-    else {
-      document.body.style.transform = 'translate(0,0)';
-      flash.style.opacity = 0;
-      document.body.removeChild(failText);
-      document.body.removeChild(answerText);
-    }
+    if(!start) start=timestamp;
+    let elapsed=timestamp-start;
+    let progress=elapsed/duration; if(progress>1) progress=1;
+    let intensity=(1-progress)*25;
+    const x=(Math.random()-0.5)*intensity;
+    const y=(Math.random()-0.5)*intensity;
+    document.body.style.transform=`translate(${x}px,${y}px)`;
+    flash.style.opacity=0.8*(1-progress);
+    anim.style.opacity=1-progress;
+    anim.style.transform=`scale(${1-progress})`;
+    if(progress<1) requestAnimationFrame(step);
+    else { document.body.style.transform='translate(0,0)'; flash.style.opacity=0; document.body.removeChild(anim); }
   }
   requestAnimationFrame(step);
 }
 
 function gameOver(){
   if(!gameActive) return;
-  gameActive = false;
+  gameActive=false;
   animateFailWithFlash();
+  score=0; scoreEl.textContent=`Score: ${score}`;
+  answerInput.value='';
+  resetUI();
 }
 
 function startGame(){
@@ -263,6 +252,63 @@ Array.from(storeItems).forEach(item => {
       }
     } else { alert('Not enough score to buy this item!'); }
   });
+});
+
+// Slot Machine
+slotBtn.addEventListener('click', ()=>{
+  if(!gameActive) return; // can only play while game active
+  if(score < 5){ alert("Not enough score to play slot! Need 5 points."); return; }
+  pausedTimeLeft = timeLeft;
+  clearInterval(timer);
+  gameActive = false;
+  slotOverlay.style.opacity = 1;
+  slotOverlay.style.pointerEvents = 'auto';
+  slotBox.style.opacity = 1;
+  slotBox.style.transform='scale(1)';
+});
+
+function hideSlotOverlay(){
+  slotOverlay.style.opacity = 0;
+  slotBox.style.opacity = 0;
+  slotOverlay.style.pointerEvents = 'none';
+  setTimeout(()=>{
+    if(pausedTimeLeft > 0){ timeLeft = pausedTimeLeft; gameActive=true; startTimer(); drawQuestion(); }
+  },500);
+}
+
+spinBtn.addEventListener('click', () => {
+  if(score < 5){ alert("Not enough score!"); return; }
+  score -=5; scoreEl.textContent = `Score: ${score}`;
+  spinBtn.disabled = true;
+  const duration = 2000; // 2s pop
+  const intervalTime = 100;
+  const startTime = Date.now();
+  const interval = setInterval(()=>{
+    Array.from(reels).forEach(reel=>{
+      reel.innerHTML='';
+      const idx = Math.floor(Math.random()*symbols.length);
+      const sym = document.createElement('div'); sym.textContent=symbols[idx]; sym.style.height='120px'; sym.style.lineHeight='120px';
+      reel.appendChild(sym);
+    });
+    if(Date.now()-startTime >= duration){
+      clearInterval(interval);
+      const results=[];
+      Array.from(reels).forEach(reel=>{
+        reel.innerHTML='';
+        const idx = Math.floor(Math.random()*symbols.length);
+        const sym = document.createElement('div'); sym.textContent=symbols[idx]; sym.style.height='120px'; sym.style.lineHeight='120px';
+        reel.appendChild(sym);
+        results.push(symbols[idx]);
+      });
+      if(results[0]===results[1] && results[1]===results[2]){
+        score +=15;
+        alert("🎉 JACKPOT! +15 Score");
+      } else { alert("Better luck next time!"); }
+      scoreEl.textContent=`Score: ${score}`;
+      spinBtn.disabled=false;
+      hideSlotOverlay();
+    }
+  }, intervalTime);
 });
 </script>
 </body>
